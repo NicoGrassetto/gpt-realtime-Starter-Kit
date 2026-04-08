@@ -1,6 +1,5 @@
 import { useRef } from "react";
 import {
-  ChevronDown,
   ArrowRight,
   Mic,
   MicOff,
@@ -16,6 +15,9 @@ interface ChatInputProps {
   connected: boolean;
   recording: boolean;
   activeMode: string;
+  models: Array<{ id: string; model: string; status: string }>;
+  selectedModel: string;
+  onModelChange: (model: string) => void;
   onConnect: () => void;
   onDisconnect: () => void;
   onToggleMic: () => void;
@@ -36,6 +38,9 @@ export default function ChatInput({
   connected,
   recording,
   activeMode,
+  models,
+  selectedModel,
+  onModelChange,
   onConnect,
   onDisconnect,
   onToggleMic,
@@ -97,12 +102,21 @@ export default function ChatInput({
           }}
         />
         <div className="chat-input-toolbar">
-          <button
+          <select
             className="chat-input-model"
-            onClick={() => console.log("Model picker clicked")}
+            value={selectedModel}
+            onChange={(e) => onModelChange(e.target.value)}
+            disabled={connected}
           >
-            GPT-4.1 <ChevronDown />
-          </button>
+            {models.length === 0 && (
+              <option value="">Loading…</option>
+            )}
+            {models.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.id}
+              </option>
+            ))}
+          </select>
 
           <div className="chat-input-actions">
             {/* Connect / Disconnect */}

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Navbar from "./components/Navbar";
 import ModalityMatrix from "./components/ModalityMatrix";
 import HeroText from "./components/HeroText";
@@ -18,12 +18,20 @@ const visionModes = ["vision", "vision_text"];
 // Modes whose output is text-only (no audio playback)
 const textOnlyOutputModes = ["transcription", "vision_text", "text_chat"];
 
+interface ModelInfo {
+  id: string;
+  model: string;
+  status: string;
+}
+
 export default function App() {
   const [inputValue, setInputValue] = useState("");
   const [activeMode, setActiveMode] = useState("voice_assistant");
   const [recording, setRecording] = useState(false);
   const [aiSpeaking, setAiSpeaking] = useState(false);
   const [lastImage, setLastImage] = useState<string | null>(null);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [selectedModel, setSelectedModel] = useState("");
 
   const activeModeRef = useRef(activeMode);
   activeModeRef.current = activeMode;
@@ -69,9 +77,19 @@ export default function App() {
   const sendAudioRef = useRef(sendAudio);
   sendAudioRef.current = sendAudio;
 
+  useEffect(() => {
+    fetch("/api/models")
+      .then((r) => r.json())
+      .then((data: { models: ModelInfo[]; default: string }) => {
+        setModels(data.models);
+        setSelectedModel(data.default);
+      })
+      .catch(() => {});
+  }, []);
+
   const handleConnect = useCallback(() => {
-    connect(activeMode);
-  }, [connect, activeMode]);
+    connect(activeMode, "default", selectedModel || undefined);
+  }, [connect, activeMode, selectedModel]);
 
   const handleDisconnect = useCallback(() => {
     if (captureRef.current?.isRecording()) {
@@ -131,13 +149,13 @@ export default function App() {
         getPlayer().interrupt();
         disconnect();
         setActiveMode(mode);
-        setTimeout(() => connect(mode), 300);
+        setTimeout(() => connect(mode, "default", selectedModel || undefined), 300);
       } else {
         setActiveMode(mode);
         setLastImage(null);
       }
     },
-    [connected, disconnect, connect]
+    [connected, disconnect, connect, selectedModel]
   );
 
   const showLanding = !connected && !connecting;
@@ -194,6 +212,9 @@ export default function App() {
           connected={connected}
           recording={recording}
           activeMode={activeMode}
+          models={models}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
           onConnect={handleConnect}
           onDisconnect={handleDisconnect}
           onToggleMic={handleToggleMic}

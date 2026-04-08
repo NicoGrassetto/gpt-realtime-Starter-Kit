@@ -7,6 +7,7 @@ import struct
 import sys
 from typing import Any
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -57,20 +58,22 @@ def _get_azure_token() -> str:
     return token.token
 
 
-def _build_realtime_url() -> str:
+def _build_realtime_url(deployment: str | None = None) -> str:
+    dep = deployment or AZURE_OPENAI_DEPLOYMENT
     host = AZURE_OPENAI_ENDPOINT.rstrip("/")
     # Ensure wss:// scheme (required by the Agents SDK websockets transport)
     host = host.replace("https://", "wss://").replace("http://", "ws://")
     if not host.startswith("ws"):
         host = f"wss://{host}"
-    return f"{host}/openai/v1/realtime?model={AZURE_OPENAI_DEPLOYMENT}"
+    return f"{host}/openai/v1/realtime?model={dep}"
 
 
-def _build_model_settings(mode: str) -> dict[str, Any]:
+def _build_model_settings(mode: str, deployment: str | None = None) -> dict[str, Any]:
     """Translate YAML config into SDK RealtimeSessionModelSettings."""
     cfg = load_session_config(mode)
 
-    settings: dict[str, Any] = {"model_name": "gpt-realtime-1.5"}
+    model_name = deployment or AZURE_OPENAI_DEPLOYMENT
+    settings: dict[str, Any] = {"model_name": model_name}
 
     # Output modalities
     modalities = cfg.get("modalities", ["text", "audio"])
@@ -146,6 +149,7 @@ class RealtimeWebSocketManager:
         session_id: str,
         mode: str = "voice_assistant",
         prompt: str = "default",
+        model: str | None = None,
     ) -> None:
         await websocket.accept()
         self.websockets[session_id] = websocket
@@ -155,9 +159,9 @@ class RealtimeWebSocketManager:
 
         token = _get_azure_token()
         model_config: RealtimeModelConfig = {
-            "url": _build_realtime_url(),
+            "url": _build_realtime_url(model),
             "headers": {"authorization": f"Bearer {token}"},
-            "initial_model_settings": _build_model_settings(mode),
+            "initial_model_settings": _build_model_settings(mode, model),
         }
 
         session_context = await runner.run(model_config=model_config)
@@ -317,6 +321,47 @@ async def get_prompts():
     return JSONResponse({"prompts": list_prompts()})
 
 
+@app.get("/api/models")
+async def get_models():
+    """List available Azure OpenAI deployments."""
+    try:
+        token = _get_azure_token()
+        endpoint = AZURE_OPENAI_ENDPOINT.rstrip("/")
+        url = f"{endpoint}/openai/deployments?api-version=2024-10-21"
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                url,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+        models = []
+        for dep in data.get("data", []):
+            models.append({
+                "id": dep.get("id", ""),
+                "model": dep.get("model", ""),
+                "status": dep.get("status", ""),
+            })
+
+        # Put the current default first
+        models.sort(key=lambda m: (0 if m["id"] == AZURE_OPENAI_DEPLOYMENT else 1, m["id"]))
+
+        return JSONResponse({"models": models, "default": AZURE_OPENAI_DEPLOYMENT})
+    except Exception as e:
+        logger.exception("Failed to list models")
+        return JSONResponse({
+            "models": [{
+                "id": AZURE_OPENAI_DEPLOYMENT,
+                "model": AZURE_OPENAI_DEPLOYMENT,
+                "status": "unknown",
+            }],
+            "default": AZURE_OPENAI_DEPLOYMENT,
+            "error": str(e),
+        })
+
+
 # ---------------------------------------------------------------------------
 # WebSocket endpoint
 # ---------------------------------------------------------------------------
@@ -328,11 +373,12 @@ async def websocket_endpoint(
     session_id: str,
     mode: str = "voice_assistant",
     prompt: str = "default",
+    model: str | None = None,
 ):
-    logger.info("Client connecting — session=%s, mode=%s, prompt=%s", session_id, mode, prompt)
+    logger.info("Client connecting — session=%s, mode=%s, prompt=%s, model=%s", session_id, mode, prompt, model or "default")
 
     try:
-        await manager.connect(websocket, session_id, mode, prompt)
+        await manager.connect(websocket, session_id, mode, prompt, model)
     except FileNotFoundError as e:
         await websocket.accept()
         await websocket.send_text(json.dumps({"type": "error", "error": str(e)}))

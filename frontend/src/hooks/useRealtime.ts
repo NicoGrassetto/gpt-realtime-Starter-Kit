@@ -27,7 +27,7 @@ export interface UseRealtimeReturn {
   connecting: boolean;
   transcript: TranscriptEntry[];
   toolActivity: ToolActivity | null;
-  connect: (mode: string, prompt?: string) => void;
+  connect: (mode: string, prompt?: string, model?: string) => void;
   disconnect: () => void;
   sendAudio: (samples: number[]) => void;
   sendImage: (dataUrl: string, text?: string) => void;
@@ -182,7 +182,7 @@ export function useRealtime(
   }, [extractText]);
 
   const connect = useCallback(
-    (mode: string, prompt = "default") => {
+    (mode: string, prompt = "default", model?: string) => {
       // Disconnect existing
       if (wsRef.current) {
         wsRef.current.close();
@@ -198,7 +198,10 @@ export function useRealtime(
 
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host;
-      const url = `${protocol}//${host}/ws/${sid}?mode=${encodeURIComponent(mode)}&prompt=${encodeURIComponent(prompt)}`;
+      let url = `${protocol}//${host}/ws/${sid}?mode=${encodeURIComponent(mode)}&prompt=${encodeURIComponent(prompt)}`;
+      if (model) {
+        url += `&model=${encodeURIComponent(model)}`;
+      }
 
       const ws = new WebSocket(url);
       wsRef.current = ws;

@@ -4,3 +4,4 @@ openai-agents
 azure-identity
 python-dotenv
 pyyaml
+httpx
