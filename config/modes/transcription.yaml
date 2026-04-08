@@ -1,0 +1,10 @@
+name: transcription
+description: Audio in, text only out — live transcription / translation
+
+session:
+  modalities: [text]
+  temperature: 0.3
+  input_audio_transcription:
+    model: whisper-1
+  turn_detection:
+    type: semantic_vad

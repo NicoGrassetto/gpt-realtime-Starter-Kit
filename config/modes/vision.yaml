@@ -1,0 +1,8 @@
+name: vision
+description: Image + audio input, audio + text output
+
+session:
+  modalities: [text, audio]
+  temperature: 0.7
+  turn_detection:
+    type: server_vad
