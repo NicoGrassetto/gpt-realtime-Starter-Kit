@@ -43,3 +43,34 @@ Translations into the 24 official EU languages:
 - sk: <Slovak translation>
 - sl: <Slovenian translation>
 - sv: <Swedish translation>
+
+Output format: 
+
+{transcribed: <the transcribed text>, 
+lang: <detected language code>,
+translations: {
+  bg: <Bulgarian translation>,
+  cs: <Czech translation>,
+  da: <Danish translation>,
+  de: <German translation>,
+  el: <Greek translation>,
+  en: <English translation>,
+  es: <Spanish translation>,
+  et: <Estonian translation>,
+  fi: <Finnish translation>,
+  fr: <French translation>,
+  ga: <Irish translation>,
+  hr: <Croatian translation>,
+  hu: <Hungarian translation>,
+  it: <Italian translation>,
+  lt: <Lithuanian translation>,
+  lv: <Latvian translation>,
+  mt: <Maltese translation>,
+  nl: <Dutch translation>,
+  pl: <Polish translation>,
+  pt: <Portuguese translation>,
+  ro: <Romanian translation>,
+  sk: <Slovak translation>,
+  sl: <Slovenian translation>,
+  sv: <Swedish translation>
+}
