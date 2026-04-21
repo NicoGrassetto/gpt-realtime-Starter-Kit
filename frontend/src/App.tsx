@@ -88,7 +88,7 @@ export default function App() {
   }, []);
 
   const handleConnect = useCallback(() => {
-    connect(activeMode, "default", selectedModel || undefined);
+    connect(activeMode, activeMode, selectedModel || undefined);
   }, [connect, activeMode, selectedModel]);
 
   const handleDisconnect = useCallback(() => {
@@ -149,7 +149,7 @@ export default function App() {
         getPlayer().interrupt();
         disconnect();
         setActiveMode(mode);
-        setTimeout(() => connect(mode, "default", selectedModel || undefined), 300);
+        setTimeout(() => connect(mode, mode, selectedModel || undefined), 300);
       } else {
         setActiveMode(mode);
         setLastImage(null);
